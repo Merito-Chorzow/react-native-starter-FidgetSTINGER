@@ -1,16 +1,25 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
+import { saveNote } from "../services/ApiService";
 
 export default function AddScreen({ navigation }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title) {
       Alert.alert("Błąd", "Podaj tytuł");
       return;
     }
-    console.log("Zapisywanie (mock):", { title, description });
+    setLoading(true);
+    await saveNote({
+      title,
+      description,
+      location: null, // Brak GPS w tym commicie
+      date: new Date().toISOString(),
+    });
+    setLoading(false);
     navigation.goBack();
   };
 
@@ -25,7 +34,11 @@ export default function AddScreen({ navigation }) {
         onChangeText={setDescription}
         multiline
       />
-      <Button title="Zapisz" onPress={handleSave} />
+      <Button
+        title={loading ? "Zapisywanie..." : "Zapisz"}
+        onPress={handleSave}
+        disabled={loading}
+      />
     </View>
   );
 }

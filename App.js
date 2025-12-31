@@ -4,6 +4,7 @@ import { createStackNavigator } from "@react-navigation/stack";
 import ListScreen from "./src/screens/ListScreen";
 import DetailScreen from "./src/screens/DetailScreen";
 import AddScreen from "./src/screens/AddScreen";
+import AboutScreen from "./src/screens/AboutScreen";
 
 const Stack = createStackNavigator();
 
@@ -25,6 +26,11 @@ export default function App() {
           name="Add"
           component={AddScreen}
           options={{ title: "Dodaj notatkę" }}
+        />
+        <Stack.Screen
+          name="About"
+          component={AboutScreen}
+          options={{ title: "O aplikacji" }}
         />
       </Stack.Navigator>
     </NavigationContainer>

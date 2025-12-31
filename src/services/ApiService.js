@@ -2,22 +2,20 @@ let mockNotes = [
   {
     id: "1",
     title: "Spotkanie w parku",
-    description:
-      "Omówienie projektu z zespołem. Pamiętać o zabraniu dokumentacji.",
+    description: "Omówienie projektu z zespołem.",
     date: new Date().toISOString(),
-    location: { latitude: 52.2297, longitude: 21.0122 },
+    location: null,
   },
   {
     id: "2",
     title: "Zakupy",
-    description: "Mleko, chleb, jajka, woda mineralna, owoce.",
+    description: "Mleko, chleb, jajka.",
     date: new Date().toISOString(),
     location: null,
   },
 ];
 
 export const getNotes = async () => {
-  // Asynchroniczne pobieranie danych
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve([...mockNotes]);
