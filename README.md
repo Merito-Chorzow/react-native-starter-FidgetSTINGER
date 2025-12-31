@@ -1,54 +1,163 @@
 # Field Notes (React Native)
 
-## Opis
+## Opis Projektu
 
-Aplikacja mobilna do zarządzania notatkami terenowymi stworzona w technologii React Native.
-Aplikacja umożliwia przeglądanie listy notatek, wyświetlanie ich szczegółów oraz dodawanie nowych wpisów.
-Dane są obecnie przechowywane w pamięci podręcznej aplikacji (mock API) i symulują komunikację z serwerem.
+**Field Notes** to aplikacja mobilna stworzona w technologii React Native (Expo), służąca do zbierania notatek terenowych wzbogaconych o dane lokalizacyjne. Aplikacja pozwala użytkownikowi na tworzenie, przeglądanie oraz usuwanie notatek, a także automatyczne przypisywanie im współrzędnych GPS pobranych z urządzenia.
+
+Projekt realizuje wykorzystanie funkcji natywnej (GPS) oraz symulację komunikacji z API.
+
+---
 
 ## Funkcjonalności
 
-W ramach realizacji projektu zaimplementowano następujące funkcjonalności:
+Aplikacja składa się z 4 głównych widoków:
 
-### 1. Zarządzanie notatkami
+1.  **Lista Notatek (`ListScreen`)**:
 
-Aplikacja umożliwia pełny przegląd oraz dodawanie nowych notatek terenowych.
+    - Wyświetla listę wszystkich zapisanych notatek.
+    - Notatki posiadające lokalizację są oznaczone ikoną pinezki (📍).
+    - Dane są pobierane asynchronicznie z serwisu `ApiService`.
 
-- **Ekran listy (ListScreen):** Stanowi główny widok aplikacji. Dane są pobierane asynchronicznie z serwisu `ApiService`. Zastosowano wskaźnik ładowania (`ActivityIndicator`) informujący użytkownika o trwającym procesie pobierania danych. Lista obsługuje odświeżanie widoku po powrocie z ekranu dodawania.
-- **Ekran szczegółów (DetailScreen):** Pozwala na zapoznanie się z pełną treścią notatki, w tym datą jej utworzenia sformatowaną do czytelnej postaci.
-- **Ekran dodawania (AddScreen):** Zawiera formularz z walidacją danych wejściowych (wymagany tytuł). Proces zapisu jest symulowany jako operacja asynchroniczna, co pozwala na przetestowanie zachowania interfejsu przy opóźnieniach sieciowych.
+2.  **Szczegóły Notatki (`DetailScreen`)**:
 
-### 2. Nawigacja i struktura
+    - Prezentuje pełny tytuł, datę utworzenia oraz treść notatki.
+    - Wyświetla sekcję "Lokalizacja GPS" ze współrzędnymi (jeśli zostały zapisane).
+    - Umożliwia usunięcie notatki (przycisk "USUŃ NOTATKĘ").
 
-Zastosowano bibliotekę React Navigation (Stack Navigator) do zarządzania przepływem użytkownika między ekranami.
+3.  **Dodaj Notatkę (`AddScreen`)**:
 
-- Zaimplementowano intuicyjną nawigację pomiędzy listą, szczegółami a formularzem dodawania.
-- Dodano przycisk "About" w nagłówku (header), prowadzący do ekranu informacyjnego.
+    - Formularz z polami: Tytuł, Opis.
+    - **Funkcja Natywna**: Przycisk "POBIERZ LOKALIZACJĘ (GPS)", który uruchamia moduł `expo-location`.
+    - Walidacja danych przed zapisem.
 
-### 3. Warstwa danych (Mock API)
+4.  **O Aplikacji (`AboutScreen`)**:
+    - Informacje o wersji i przeznaczeniu aplikacji.
 
-Stworzono serwis `ApiService` symulujący komunikację z zewnętrznym serwerem.
+---
 
-- Wykorzystano mechanizm `Promise` oraz `setTimeout` do emulacji opóźnień sieciowych.
-- Dane przechowywane są w pamięci operacyjnej (zmienna `mockNotes`), co pozwala na testowanie operacji CRUD (Create, Read) w trakcie sesji aplikacji.
+## Implementacja Funkcji Natywnej (GPS)
 
-## Uruchomienie
+Aplikacja wykorzystuje bibliotekę `expo-location` do komunikacji z modułem GPS urządzenia.
 
-1. Zainstaluj zależności:
+### Wyzwanie: Emulatory Androida
 
-   ```bash
-   npm install
-   ```
+Podczas testowania na emulatorach Androida, moduł GPS często nie zwraca danych lub działa niestabilnie. Aby umożliwić płynne testowanie i prezentację aplikacji, zaimplementowano mechanizm **fallback** (zabezpieczenie).
 
-2. Uruchom serwer deweloperski:
+Jeśli pobranie lokalizacji z sensora nie powiedzie się (co jest typowe dla emulatora), aplikacja przechwytuje błąd i podstawia przykładowe współrzędne (Warszawa), informując o tym użytkownika specjalnym komunikatem.
 
-   ```bash
-   npx expo start
-   ```
+### Fragment kodu (`src/screens/AddScreen.js`)
 
-3. Wybierz platformę (Android/iOS) lub użyj aplikacji Expo Go na urządzeniu fizycznym.
+Poniższy kod pokazuje, jak obsługiwane jest pobieranie lokalizacji z uwzględnieniem specyfiki emulatora:
 
-## Uwagi
+```javascript
+const getLocation = async () => {
+  setLocationLoading(true);
+  try {
+    // 1. Prośba o uprawnienia
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Brak uprawnień", "Nie można pobrać lokalizacji");
+      return;
+    }
 
-- W obecnej wersji funkcje natywne (Lokalizacja/Kamera) nie są jeszcze zaimplementowane.
-- Dane nie są trwale zapisywane w pamięci urządzenia (znikną po restarcie aplikacji).
+    // 2. Próba pobrania lokalizacji z sensora (Native GPS)
+    try {
+      // Najpierw próbujemy 'getLastKnownPosition', potem 'getCurrentPosition'
+      let loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Lowest,
+        timeout: 3000,
+      });
+
+      if (loc && loc.coords) {
+        setLocation(loc.coords); // Sukces - mamy prawdziwy GPS
+      }
+    } catch (e) {
+      // 3. FALLBACK DLA EMULATORA
+      // Jeśli natywny GPS rzuci błąd (timeout/brak providera), używamy mocka
+      console.log("GPS unavailable on emulator, using mock location");
+
+      const mockCoords = {
+        latitude: 52.2297,
+        longitude: 21.0122,
+      };
+
+      setLocation(mockCoords);
+
+      Alert.alert(
+        "Lokalizacja (demo)",
+        "Użyto przykładowych współrzędnych (Warszawa).\n\nNa prawdziwym urządzeniu funkcja GPS zadziała automatycznie."
+      );
+    }
+  } finally {
+    setLocationLoading(false);
+  }
+};
+```
+
+Dzięki temu rozwiązaniu aplikacja jest w pełni testowalna na każdym środowisku, a na fizycznym urządzeniu działa w pełni natywnie.
+
+---
+
+## Mock API (Symulacja Backend)
+
+Zamiast łączyć się z zewnętrzną bazą danych, aplikacja wykorzystuje serwis `ApiService.js`, który symuluje asynchroniczne zapytania sieciowe (`Promise` + `setTimeout`).
+
+### Fragment kodu (`src/services/ApiService.js`)
+
+```javascript
+let mockNotes = [
+  {
+    id: "1",
+    title: "Spotkanie w parku",
+    description: "Omówienie projektu...",
+    date: new Date().toISOString(),
+    location: { latitude: 52.2297, longitude: 21.0122 },
+  },
+  // ...
+];
+
+export const getNotes = async () => {
+  // Symulacja opóźnienia sieciowego 500ms
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve([...mockNotes]);
+    }, 500);
+  });
+};
+```
+
+---
+
+## Galeria (Zrzuty Ekranu)
+
+Poniżej przedstawiono kompletny przepływ działania aplikacji:
+
+|   1. Ekran Główny (Lista)   |        2. Szczegóły (z GPS)         |     3. Szczegóły (bez GPS)      |
+| :-------------------------: | :---------------------------------: | :-----------------------------: |
+| ![Lista](screenshots/1.jpg) | ![Szczegóły GPS](screenshots/2.jpg) | ![Szczegóły](screenshots/3.jpg) |
+
+|     4. Formularz Dodawania      |        5. Uprawnienia GPS         |       6. Wynik GPS (Demo)       |
+| :-----------------------------: | :-------------------------------: | :-----------------------------: |
+| ![Formularz](screenshots/4.jpg) | ![Uprawnienia](screenshots/5.jpg) | ![Alert GPS](screenshots/6.jpg) |
+
+|        7. Lista po dodaniu         |         8. Szczegóły nowej         |       9. O Aplikacji        |
+| :--------------------------------: | :--------------------------------: | :-------------------------: |
+| ![Lista Update](screenshots/7.jpg) | ![Nowa Notatka](screenshots/8.jpg) | ![About](screenshots/9.jpg) |
+
+---
+
+## Uruchomienie Projektu
+
+1.  Zainstaluj zależności:
+    ```bash
+    npm install
+    ```
+2.  Uruchom serwer deweloperski:
+    ```bash
+    npx expo start
+    ```
+3.  Aby uruchomić na Androidzie (Emulator lub Fizyczne urządzenie):
+    - Naciśnij `a` w terminalu.
+    - Lub zeskanuj kod QR aplikacją **Expo Go**.
+
+---

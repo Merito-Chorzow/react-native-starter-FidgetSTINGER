@@ -7,7 +7,7 @@ export default function AboutScreen() {
       <Text style={styles.title}>Field Notes</Text>
       <Text style={styles.version}>Wersja 1.0.0</Text>
       <Text style={styles.desc}>
-        Aplikacja do zbierania notatek terenowych.
+        Aplikacja do zbierania notatek terenowych z wykorzystaniem GPS.
       </Text>
     </View>
   );
